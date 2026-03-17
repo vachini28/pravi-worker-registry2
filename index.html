@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pravi — Worker Registry</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0F6E56;--teal-lt:#E1F5EE;--teal-mid:#1D9E75;
+  --amber:#854F0B;--amber-lt:#FAEEDA;--amber-mid:#BA7517;
+  --coral:#993C1D;--coral-lt:#FAECE7;--coral-mid:#D85A30;
+  --blue:#185FA5;--blue-lt:#E6F1FB;--blue-mid:#378ADD;
+  --gray-lt:#F1EFE8;--gray-mid:#888780;
+  --bg:#F8F7F2;--surface:#FFFFFF;--border:rgba(0,0,0,0.08);
+  --text:#1a1a18;--text2:#5a5a57;--text3:#9a9a96;
+  --syne:'Syne',sans-serif;--dm:'DM Sans',sans-serif;
+}
+body{font-family:var(--dm);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.logo-block{padding:22px 20px 18px;border-bottom:1px solid var(--border)}
+.logo-name{font-family:var(--syne);font-size:16px;font-weight:800;color:var(--teal)}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.nav-section{padding:14px 12px 6px}
+.nav-cat{font-size:10px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;padding:0 8px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:7px;border:none;background:none;font-family:var(--dm);font-size:13px;color:var(--text2);cursor:pointer;text-align:left;transition:all .15s}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--teal-lt);color:var(--teal);font-weight:500}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+.sf-label{font-size:10px;color:var(--text3)}
+.sf-name{font-size:12px;font-weight:500;color:var(--text);margin-top:2px}
+.sf-role{font-size:11px;color:var(--teal)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left h1{font-family:var(--syne);font-size:17px;font-weight:700;color:var(--text)}
+.topbar-left p{font-size:12px;color:var(--text3);margin-top:2px}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.content{flex:1;overflow-y:auto;padding:24px 28px}
+.section{display:none}
+.section.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card-title{font-family:var(--syne);font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat-card{background:var(--gray-lt);border-radius:8px;padding:14px 16px}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500}
+.stat-num{font-family:var(--syne);font-size:26px;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.stat-change{font-size:11px;margin-top:4px}
+.up{color:var(--teal-mid)}.warn-c{color:var(--amber-mid)}.danger-c{color:var(--coral-mid)}
+.badge{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:500;white-space:nowrap;display:inline-block}
+.badge-teal{background:var(--teal-lt);color:var(--teal)}
+.badge-amber{background:var(--amber-lt);color:var(--amber)}
+.badge-coral{background:var(--coral-lt);color:var(--coral)}
+.badge-blue{background:var(--blue-lt);color:var(--blue)}
+.alert{border-radius:8px;padding:11px 14px;margin-bottom:10px;border:1px solid transparent}
+.alert-danger{background:var(--coral-lt);border-color:#F5C4B3}
+.alert-warn{background:var(--amber-lt);border-color:#FAC775}
+.alert-info{background:var(--blue-lt);border-color:#B5D4F4}
+.alert-success{background:var(--teal-lt);border-color:#9FE1CB}
+.alert-title{font-size:12px;font-weight:500;margin-bottom:2px}
+.alert-body{font-size:12px;color:var(--text2);line-height:1.5}
+.worker-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.worker-row:last-child{border-bottom:none}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.av-t{background:var(--teal-lt);color:var(--teal)}.av-a{background:var(--amber-lt);color:var(--amber)}
+.av-b{background:var(--blue-lt);color:var(--blue)}.av-c{background:var(--coral-lt);color:var(--coral)}
+.wname{font-size:13px;font-weight:500;color:var(--text)}
+.wmeta{font-size:11px;color:var(--text3);margin-top:1px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-label{font-size:12px;color:var(--text2);width:110px;flex-shrink:0}
+.bar-track{flex:1;height:7px;background:var(--gray-lt);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;width:0;transition:width 1.2s ease}
+.bar-val{font-size:12px;font-weight:500;color:var(--text);width:40px;text-align:right}
+.map-box{background:var(--gray-lt);border-radius:8px;height:180px;position:relative;overflow:hidden;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:28px 28px}
+.pin{position:absolute;width:13px;height:13px;border-radius:50%;border:2.5px solid white;cursor:pointer;transition:transform .2s}
+.pin:hover{transform:scale(1.7)}
+.map-legend{position:absolute;bottom:8px;right:10px;font-size:10px;color:var(--text3);background:rgba(255,255,255,.92);padding:2px 8px;border-radius:4px}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
+.form-input,.form-select{width:100%;padding:10px 13px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-family:var(--dm);background:var(--surface);color:var(--text);outline:none;margin-bottom:14px;transition:border-color .15s}
+.form-input:focus,.form-select:focus{border-color:var(--teal-mid)}
+.form-group{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-primary{width:100%;padding:11px;background:var(--teal);color:white;border:none;border-radius:8px;font-size:13px;font-weight:500;font-family:var(--dm);cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:.88}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--dm);transition:all .15s}
+.btn-sm-teal{background:var(--teal)!important;color:white!important;border-color:var(--teal)!important}
+.hint{font-size:11px;color:var(--text3);text-align:center;margin-top:10px}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:12px;cursor:pointer;background:var(--surface);color:var(--text2);transition:all .15s;font-family:var(--dm)}
+.pill.sel{background:var(--teal-lt);border-color:var(--teal-mid);color:var(--teal);font-weight:500}
+.otp-row{display:flex;gap:8px;margin-bottom:14px}
+.otp-box{flex:1;text-align:center;padding:10px 4px;border-radius:8px;border:1px solid var(--border);font-size:20px;font-family:var(--syne);font-weight:700;background:var(--surface);color:var(--text);outline:none;min-width:0;transition:all .15s}
+.otp-box:focus{border-color:var(--teal-mid)}
+.otp-filled{border-color:var(--teal-mid)!important;background:var(--teal-lt)!important;color:var(--teal)!important}
+.step-bar{display:flex;align-items:center;margin-bottom:22px}
+.step-item{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.step-item:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:1.5px;background:var(--border)}
+.step-item.done::after{background:var(--teal-mid)}
+.step-num{width:27px;height:27px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text3);z-index:1;position:relative;transition:all .3s}
+.step-item.done .step-num{background:var(--teal-mid);border-color:var(--teal-mid);color:white}
+.step-item.active .step-num{background:var(--teal);border-color:var(--teal);color:white}
+.step-lbl{font-size:10px;color:var(--text3);margin-top:4px;text-align:center}
+.step-item.active .step-lbl{color:var(--teal);font-weight:500}
+.step-page{display:none}
+.step-page.visible{display:block;animation:fadeIn .2s ease}
+.face-zone{width:100%;height:130px;border:2px dashed var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--bg);cursor:pointer;transition:all .2s;margin-bottom:14px}
+.face-zone:hover,.face-zone.captured{border-color:var(--teal-mid);background:var(--teal-lt);border-style:solid}
+.face-oval{width:58px;height:72px;border-radius:50%;border:2px solid var(--gray-mid);display:flex;align-items:center;justify-content:center;font-size:28px}
+.capture-text{font-size:11px;color:var(--text3)}
+.face-zone.captured .capture-text{color:var(--teal);font-weight:500}
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:var(--bg);margin-bottom:14px;transition:all .2s}
+.upload-zone:hover,.upload-zone.done{border-color:var(--teal-mid);background:var(--teal-lt)}
+.success-wrap{text-align:center;padding:24px 10px}
+.worker-id-box{font-family:var(--syne);font-size:18px;font-weight:700;color:var(--teal);background:var(--teal-lt);padding:10px 24px;border-radius:8px;display:inline-block;margin:14px 0;letter-spacing:.02em}
+.auth-phone{background:var(--bg);border-radius:12px;padding:22px;border:1px solid var(--border)}
+.step-dots{display:flex;gap:7px;margin-bottom:20px}
+.sdot{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s}
+.sdot.done{background:var(--teal-mid)}.sdot.active{background:var(--teal)}
+.auth-step{display:none}
+.auth-step.visible{display:block;animation:fadeIn .2s ease}
+.mfa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.mfa-btn{padding:12px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s;font-family:var(--dm)}
+.mfa-btn:hover,.mfa-btn.sel{border-color:var(--teal-mid);background:var(--teal-lt)}
+.mfa-btn.sel .mfa-label{color:var(--teal);font-weight:500}
+.mfa-icon{font-size:22px;display:block;margin-bottom:5px}
+.mfa-label{font-size:11px;color:var(--text2)}
+.sec-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.sec-item:last-child{border-bottom:none}
+.sec-dot{width:8px;height:8px;border-radius:50%;background:var(--teal-mid);flex-shrink:0}
+.sec-dot.warn{background:var(--amber-mid)}
+.sec-name{font-size:13px;font-weight:500;color:var(--text)}
+.sec-desc{font-size:11px;color:var(--text3);margin-top:1px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:620px}
+th{padding:9px 12px;text-align:left;font-weight:500;color:var(--text2);border-bottom:1px solid var(--border);background:var(--bg);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--gray-lt)}
+.risk-h{color:var(--coral);font-weight:500}.risk-m{color:var(--amber);font-weight:500}.risk-l{color:var(--teal);font-weight:500}
+.progress-track{height:4px;background:var(--gray-lt);border-radius:2px;overflow:hidden;margin:8px 0}
+.progress-fill{height:100%;border-radius:2px;background:var(--teal-mid)}
+.api-banner{font-size:11px;padding:5px 14px;text-align:center;font-weight:500}
+.api-ok{background:#E1F5EE;color:#0F6E56}
+.api-off{background:#FAEEDA;color:#854F0B}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="login-screen" style="position:fixed;inset:0;background:#F8F7F2;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="width:380px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:#0F6E56">Pravi</div>
+      <div style="font-size:13px;color:#9a9a96;margin-top:4px">Domestic Worker Registry System</div>
+    </div>
+    <div style="background:white;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:28px">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#1a1a18;margin-bottom:6px">Sign in to continue</div>
+      <div style="font-size:12px;color:#9a9a96;margin-bottom:20px">Choose your role to access the portal</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div id="role-admin" onclick="selectRole('admin')" style="border:1.5px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s">
+          <div style="font-size:28px;margin-bottom:8px">🏛️</div>
+          <div style="font-size:13px;font-weight:500;color:#1a1a18">Admin</div>
+          <div style="font-size:11px;color:#9a9a96;margin-top:2px">District official</div>
+        </div>
+        <div id="role-worker" onclick="selectRole('worker')" style="border:1.5px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s">
+          <div style="font-size:28px;margin-bottom:8px">👷</div>
+          <div style="font-size:13px;font-weight:500;color:#1a1a18">Worker</div>
+          <div style="font-size:11px;color:#9a9a96;margin-top:2px">Register / view ID</div>
+        </div>
+      </div>
+      <div id="login-fields" style="display:none">
+        <label style="display:block;font-size:12px;color:#5a5a57;margin-bottom:5px;font-weight:500" id="login-label">Username</label>
+        <input id="login-username" style="width:100%;padding:10px 13px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px" placeholder="Enter username"/>
+        <label style="display:block;font-size:12px;color:#5a5a57;margin-bottom:5px;font-weight:500">Password</label>
+        <input id="login-password" type="password" style="width:100%;padding:10px 13px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px" placeholder="Enter password"/>
+        <div id="login-error" style="color:#993C1D;font-size:12px;margin-bottom:10px;display:none"></div>
+        <button onclick="doLogin()" style="width:100%;padding:11px;background:#0F6E56;color:white;border:none;border-radius:8px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer">Sign in →</button>
+        <div style="font-size:11px;color:#9a9a96;text-align:center;margin-top:10px" id="login-hint"></div>
+      </div>
+      <div id="role-prompt" style="font-size:12px;color:#9a9a96;text-align:center">Select a role above to continue</div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+<div class="sidebar">
+  <div class="logo-block">
+    <div class="logo-name">Pravi</div>
+    <div class="logo-sub">Worker Registry Portal</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-cat">Overview</div>
+    <button class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">📊</span><span>Dashboard</span></button>
+    <button class="nav-item" onclick="nav('register',this)"><span class="nav-icon">➕</span><span>Register Worker</span></button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-cat">Manage</div>
+    <button class="nav-item" onclick="nav('workers',this)"><span class="nav-icon">👥</span><span>Worker Records</span></button>
+    <button class="nav-item" onclick="nav('fraud',this)"><span class="nav-icon">🚨</span><span>Fraud Alerts</span></button>
+    <button class="nav-item" onclick="nav('security',this)"><span class="nav-icon">🔒</span><span>Security Controls</span></button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-cat">Demo</div>
+    <button class="nav-item" onclick="nav('auth',this)"><span class="nav-icon">📱</span><span>Auth / MFA Flow</span></button>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sf-label">Signed in as</div>
+    <div class="sf-name">Ravi Sharma</div>
+    <div class="sf-role">District Admin · Surat</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="page-title">Dashboard</h1>
+      <p id="page-sub">Surat District · March 2026</p>
+    </div>
+    <div class="topbar-right">
+      <span class="badge badge-amber">12 Pending</span>
+      <span class="badge badge-coral">5 Critical</span>
+      <span class="badge badge-teal" id="backend-badge">Connecting...</span>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- WORKER DASHBOARD -->
+<div class="section" id="sec-worker-home">
+  <div style="max-width:680px">
+
+    <!-- Profile card -->
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--teal-lt);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--teal);flex-shrink:0" id="worker-avatar-big">RK</div>
+        <div style="flex:1">
+          <div style="font-family:var(--syne);font-size:17px;font-weight:700;color:var(--text)" id="worker-display-name">Rajesh Kumar</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">Construction Worker · Vesu, Surat</div>
+        </div>
+        <span class="badge badge-teal" id="worker-status-badge">Verified</span>
+      </div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Worker ID</div><div style="font-family:var(--syne);font-size:13px;font-weight:700;color:var(--teal);margin-top:6px" id="worker-id-display">SRT-10001</div></div>
+        <div class="stat-card"><div class="stat-label">Sector</div><div style="font-family:var(--syne);font-size:13px;font-weight:700;color:var(--text);margin-top:6px">Construction</div></div>
+        <div class="stat-card"><div class="stat-label">State of origin</div><div style="font-family:var(--syne);font-size:13px;font-weight:700;color:var(--text);margin-top:6px">Bihar</div></div>
+        <div class="stat-card"><div class="stat-label">Registered since</div><div style="font-family:var(--syne);font-size:13px;font-weight:700;color:var(--text);margin-top:6px">Jan 2026</div></div>
+      </div>
+    </div>
+
+    <!-- KYC Status -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">KYC verification status</div>
+      <div class="alert alert-success" style="margin-bottom:12px">
+        <div class="alert-title">✅ Your identity is verified</div>
+        <div class="alert-body">Your Aadhaar card has been verified. You are eligible to work across all registered employers in Surat district.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;color:var(--text2);width:120px">Registration</div>
+        <div style="flex:1;height:6px;background:var(--gray-lt);border-radius:3px;overflow:hidden"><div style="width:100%;height:100%;background:var(--teal-mid);border-radius:3px"></div></div>
+        <div style="font-size:11px;color:var(--teal);font-weight:500">Done</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;color:var(--text2);width:120px">Document check</div>
+        <div style="flex:1;height:6px;background:var(--gray-lt);border-radius:3px;overflow:hidden"><div style="width:100%;height:100%;background:var(--teal-mid);border-radius:3px"></div></div>
+        <div style="font-size:11px;color:var(--teal);font-weight:500">Done</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;color:var(--text2);width:120px">ID issued</div>
+        <div style="flex:1;height:6px;background:var(--gray-lt);border-radius:3px;overflow:hidden"><div style="width:100%;height:100%;background:var(--teal-mid);border-radius:3px"></div></div>
+        <div style="font-size:11px;color:var(--teal);font-weight:500">Done</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <!-- Download ID -->
+      <div class="card">
+        <div class="card-title">Your worker ID card</div>
+        <div style="background:var(--teal-lt);border:1px solid #9FE1CB;border-radius:10px;padding:16px;margin-bottom:14px;text-align:center">
+          <div style="font-size:10px;color:var(--teal);font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px">Government of India · Pravi Portal</div>
+          <div style="font-family:var(--syne);font-size:15px;font-weight:700;color:var(--teal)" id="id-card-name">Rajesh Kumar</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Construction · Surat, Gujarat</div>
+          <div style="font-family:var(--syne);font-size:13px;font-weight:700;color:var(--teal-dk,#085041);margin-top:8px;background:white;padding:4px 12px;border-radius:6px;display:inline-block">SRT-10001</div>
+        </div>
+        <button class="btn-primary" onclick="alert('In production: downloads a PDF ID card with QR code')">Download ID card (PDF)</button>
+      </div>
+
+      <!-- Employment history -->
+      <div class="card">
+        <div class="card-title">Employment history</div>
+        <div class="worker-row">
+          <div class="avatar av-t">ST</div>
+          <div style="flex:1"><div class="wname">Shree Textiles Pvt Ltd</div><div class="wmeta">Factory · Jan 2025 – Mar 2025</div></div>
+          <span class="badge badge-teal">Completed</span>
+        </div>
+        <div class="worker-row">
+          <div class="avatar av-b">RB</div>
+          <div style="flex:1"><div class="wname">Rathi Builders</div><div class="wmeta">Construction · Apr 2025 – Dec 2025</div></div>
+          <span class="badge badge-teal">Completed</span>
+        </div>
+        <div class="worker-row">
+          <div class="avatar av-a">KI</div>
+          <div style="flex:1"><div class="wname">Krishna Infra</div><div class="wmeta">Construction · Jan 2026 – Present</div></div>
+          <span class="badge badge-amber">Active</span>
+        </div>
+      </div>
+    </div>
+<!-- AI Assistant -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title">Ask Pravi AI assistant</div>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">Ask anything about your rights, wages, registration, or employment. Powered by Claude AI.</p>
+
+  <!-- Suggested questions -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px" id="suggested-questions">
+    <button class="pill" onclick="askSuggested(this)">What are my rights as a worker?</button>
+    <button class="pill" onclick="askSuggested(this)">How do I update my details?</button>
+    <button class="pill" onclick="askSuggested(this)">What is minimum wage in Gujarat?</button>
+    <button class="pill" onclick="askSuggested(this)">My employer is not paying me</button>
+  </div>
+
+  <!-- Chat area -->
+  <div id="ai-chat-box" style="background:var(--gray-lt);border-radius:10px;padding:14px;min-height:80px;margin-bottom:12px;font-size:13px;color:var(--text2);line-height:1.7">
+    Hi! I am your Pravi AI assistant. Ask me anything about your worker rights, wages, or registration.
+  </div>
+
+  <!-- Input -->
+  <div style="display:flex;gap:8px">
+    <input class="form-input" style="margin-bottom:0;flex:1" id="ai-question-input" placeholder="Type your question here..." onkeydown="if(event.key==='Enter')sendAIQuestion()"/>
+    <button class="btn-sm btn-sm-teal" onclick="sendAIQuestion()" id="ai-send-btn">Ask AI →</button>
+  </div>
+  <div style="font-size:10px;color:var(--text3);margin-top:6px">Powered by Claude (Anthropic) · Answers in English, Hindi coming soon</div>
+</div>
+    <!-- Raise grievance -->
+    <div class="card">
+      <div class="card-title">Raise a grievance</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px">If your ID is blocked, incorrect, or you have a complaint about an employer, submit it here.</p>
+      <select class="form-select"><option>ID card not received</option><option>Wrong details on my profile</option><option>Employer not paying wages</option><option>Account blocked incorrectly</option><option>Other</option></select>
+      <input class="form-input" placeholder="Describe your issue briefly..."/>
+      <button class="btn-primary" onclick="alert('Grievance submitted. Reference number: GRV-2026-' + Math.floor(Math.random()*9000+1000))">Submit grievance</button>
+    </div>
+
+  </div>
+</div>
+    <!-- DASHBOARD -->
+    <div class="section active" id="sec-dashboard">
+      <div class="grid4" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-label">Registered Workers</div><div class="stat-num" id="cnt-workers">...</div><div class="stat-change up">↑ 2,140 this week</div></div>
+        <div class="stat-card"><div class="stat-label">Verified Employers</div><div class="stat-num" id="cnt-emp">...</div><div class="stat-change up">↑ 143 this month</div></div>
+        <div class="stat-card"><div class="stat-label">Fraud Flags</div><div class="stat-num" id="cnt-fraud">...</div><div class="stat-change danger-c">5 critical</div></div>
+        <div class="stat-card"><div class="stat-label">Pending KYC</div><div class="stat-num" id="cnt-kyc">...</div><div class="stat-change warn-c">Needs attention</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Recent registrations <span id="data-source" style="font-size:10px;color:var(--text3);font-family:var(--dm);font-weight:400"></span></div>
+          <div id="recent-workers-list"><div style="color:var(--text3);font-size:12px;padding:10px 0">Loading from backend...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Live fraud alerts</div>
+          <div id="fraud-alerts-dash"><div style="color:var(--text3);font-size:12px;padding:10px 0">Loading...</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Worker distribution by sector</div>
+          <div id="sector-bars-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Geographic distribution — Surat</div>
+          <div class="map-box">
+            <div class="pin" style="background:var(--teal-mid);top:28%;left:38%" title="Vesu — 14k"></div>
+            <div class="pin" style="background:var(--coral-mid);top:52%;left:58%" title="Katargam — 9k"></div>
+            <div class="pin" style="background:var(--amber-mid);top:44%;left:22%" title="Pandesara — 22k"></div>
+            <div class="pin" style="background:var(--teal-mid);top:68%;left:48%" title="Adajan — 11k"></div>
+            <div class="pin" style="background:var(--blue-mid);top:20%;left:64%" title="Althan — 7k"></div>
+            <div class="map-legend">Hover pins · Colors = sector</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="section" id="sec-register">
+      <div style="max-width:560px">
+        <div class="step-bar">
+          <div class="step-item active" id="si-1"><div class="step-num">1</div><div class="step-lbl">Phone</div></div>
+          <div class="step-item" id="si-2"><div class="step-num">2</div><div class="step-lbl">OTP</div></div>
+          <div class="step-item" id="si-3"><div class="step-num">3</div><div class="step-lbl">Details</div></div>
+          <div class="step-item" id="si-4"><div class="step-num">4</div><div class="step-lbl">Documents</div></div>
+          <div class="step-item" id="si-5"><div class="step-num">5</div><div class="step-lbl">Biometric</div></div>
+          <div class="step-item" id="si-6"><div class="step-num">✓</div><div class="step-lbl">Done</div></div>
+        </div>
+        <div class="card">
+          <div class="step-page visible" id="sp-1">
+            <div class="card-title">Enter your mobile number</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">65% of informal workers have no email. We use <strong>mobile OTP only</strong>, sent in the worker's language.</p>
+            <label class="form-label">Mobile number</label>
+            <input class="form-input" id="reg-phone" placeholder="+91 98765 43210" type="tel"/>
+            <label class="form-label">Language for OTP</label>
+            <div class="pill-row" id="lang-pills">
+              <div class="pill sel" onclick="this.classList.toggle('sel')">Hindi</div>
+              <div class="pill" onclick="this.classList.toggle('sel')">Gujarati</div>
+              <div class="pill" onclick="this.classList.toggle('sel')">Bengali</div>
+              <div class="pill" onclick="this.classList.toggle('sel')">Tamil</div>
+              <div class="pill" onclick="this.classList.toggle('sel')">Telugu</div>
+              <div class="pill" onclick="this.classList.toggle('sel')">Odia</div>
+            </div>
+            <div id="otp-error" style="color:var(--coral);font-size:12px;margin-bottom:10px;display:none"></div>
+            <button class="btn-primary" id="send-otp-btn" onclick="sendOTPFromBackend()">Send OTP via Python backend →</button>
+          </div>
+          <div class="step-page" id="sp-2">
+            <div class="card-title">Verify OTP</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Check your VS Code terminal — the OTP is printed there.</p>
+            <div class="alert alert-info" style="margin-bottom:14px">
+              <div class="alert-title">Demo OTP shown here</div>
+              <div class="alert-body">OTP: <strong id="demo-otp-display">—</strong> · In production this goes to worker's phone via MSG91.</div>
+            </div>
+            <div class="otp-row" id="otp-inputs">
+              <input class="otp-box" maxlength="1" oninput="otpType(this,1)"/>
+              <input class="otp-box" maxlength="1" oninput="otpType(this,2)"/>
+              <input class="otp-box" maxlength="1" oninput="otpType(this,3)"/>
+              <input class="otp-box" maxlength="1" oninput="otpType(this,4)"/>
+              <input class="otp-box" maxlength="1" oninput="otpType(this,5)"/>
+              <input class="otp-box" maxlength="1" oninput="otpType(this,6)"/>
+            </div>
+            <div id="otp-verify-error" style="color:var(--coral);font-size:12px;margin-bottom:10px;display:none"></div>
+            <button class="btn-primary" id="verify-otp-btn" onclick="verifyOTPFromBackend()">Verify OTP →</button>
+            <div class="hint"><a href="#" onclick="regGo(1);return false" style="color:var(--teal)">Go back and resend</a></div>
+          </div>
+          <div class="step-page" id="sp-3">
+            <div class="card-title">Worker details</div>
+            <div class="form-group">
+              <div><label class="form-label">Full name</label><input class="form-input" id="reg-name" placeholder="Rajesh Kumar"/></div>
+              <div><label class="form-label">Date of birth</label><input class="form-input" id="reg-dob" type="date" value="1990-04-12"/></div>
+            </div>
+            <div class="form-group">
+              <div><label class="form-label">State of origin</label>
+                <select class="form-select" id="reg-origin"><option>Bihar</option><option>Uttar Pradesh</option><option>Rajasthan</option><option>Odisha</option><option>West Bengal</option><option>Jharkhand</option><option>Madhya Pradesh</option></select>
+              </div>
+              <div><label class="form-label">Sector</label>
+                <select class="form-select" id="reg-sector"><option>Construction</option><option>Domestic Help</option><option>Factory / Textile</option><option>Agriculture</option><option>Transport</option></select>
+              </div>
+            </div>
+            <button class="btn-primary" onclick="regGo(4)">Continue →</button>
+          </div>
+          <div class="step-page" id="sp-4">
+            <div class="card-title">Document upload</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">Upload any one document. Workers without documents proceed via <strong>officer verification</strong>.</p>
+            <select class="form-select" id="reg-doctype"><option value="">Aadhaar Card</option><option>Voter ID</option><option>Labour Card</option><option value="none">No document — Officer verification</option></select>
+            <div class="upload-zone" id="upload-zone" onclick="simulateUpload()">
+              <div style="font-size:28px;margin-bottom:8px">📄</div>
+              <div style="font-size:12px;color:var(--text2)"><span id="upload-label">Tap to upload document</span><br/><span style="color:var(--teal);font-weight:500">Browse files</span></div>
+            </div>
+            <div class="alert alert-info"><div class="alert-title">No document?</div><div class="alert-body">Govt. officer verifies on-site. GPS + timestamp recorded in audit log.</div></div>
+            <button class="btn-primary" onclick="regGo(5)">Continue →</button>
+          </div>
+          <div class="step-page" id="sp-5">
+            <div class="card-title">Face capture — deduplication only</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">Stored as encrypted 128-dim embedding. Raw photo deleted immediately after capture.</p>
+            <div class="face-zone" id="face-zone" onclick="captureFace()">
+              <div class="face-oval" id="face-oval">😐</div>
+              <div class="capture-text" id="face-text">Tap to capture face</div>
+            </div>
+            <div class="alert alert-info" style="margin-bottom:14px"><div class="alert-body">Cosine similarity ≥ 0.80 against all district workers → flagged as duplicate.</div></div>
+            <button class="btn-primary" onclick="submitRegistration()">Submit to Python backend →</button>
+          </div>
+          <div class="step-page" id="sp-6">
+            <div class="success-wrap">
+              <div style="font-size:52px;margin-bottom:12px">✅</div>
+              <div style="font-family:var(--syne);font-size:17px;font-weight:700;color:var(--text)">Worker registered in backend!</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:4px">Saved to Python server · Worker ID assigned</div>
+              <div class="worker-id-box" id="new-worker-id">SRT-2026-XXXXX</div>
+              <div style="font-size:11px;color:var(--text3)">Check VS Code terminal — registration logged there</div>
+              <div style="height:18px"></div>
+              <button class="btn-sm btn-sm-teal" onclick="regGo(1)">Register another</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKERS TABLE -->
+    <div class="section" id="sec-workers">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="card-title" style="margin-bottom:0">Worker records — <span id="worker-source" style="font-size:11px;color:var(--text3);font-weight:400">from Python backend</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="form-input" style="width:200px;margin-bottom:0" placeholder="Search name, ID, sector…" oninput="searchWorkers(this.value)"/>
+            <select class="form-select" style="width:140px;margin-bottom:0" onchange="filterByStatus(this.value)">
+              <option value="">All statuses</option>
+              <option>Verified</option><option>Pending</option><option>Flagged</option>
+            </select>
+            <button class="btn-sm" onclick="loadWorkers()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Worker ID</th><th>Name</th><th>Sector</th><th>District</th><th>Origin</th><th>Status</th><th>AI Risk</th></tr></thead>
+            <tbody id="workers-tbody"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Loading from Python backend...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRAUD -->
+    <div class="section" id="sec-fraud">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Active fraud flags — from Python backend</div>
+          <div id="fraud-alerts-panel"><div style="color:var(--text3);font-size:12px;padding:10px 0">Loading...</div></div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Fraud stats this month</div>
+            <div class="grid2" style="gap:10px">
+              <div class="stat-card"><div class="stat-label">Auto-blocked</div><div class="stat-num" style="font-size:20px">214</div><div class="stat-change up">By rate limiter</div></div>
+              <div class="stat-card"><div class="stat-label">Manual review</div><div class="stat-num" style="font-size:20px">37</div><div class="stat-change warn-c">5 critical</div></div>
+              <div class="stat-card"><div class="stat-label">Duplicates found</div><div class="stat-num" style="font-size:20px">12</div><div class="stat-change danger-c">Merged</div></div>
+              <div class="stat-card"><div class="stat-label">False positives</div><div class="stat-num" style="font-size:20px">3</div><div class="stat-change up">Cleared</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Test geo-velocity API live</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Sends real GPS coordinates to Python Haversine formula.</p>
+            <button class="btn-primary" onclick="testVelocityAPI()">Run: Surat → Ahmedabad fraud check →</button>
+            <div id="velocity-result" style="margin-top:12px;display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECURITY -->
+    <div class="section" id="sec-security">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Authentication controls</div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">OTP rate limiting</div><div class="sec-desc">3 OTPs/hr per phone · Lock after 5 failures — app.py</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">Session tokens — 30 min</div><div class="sec-desc">Generated in app.py verify-otp route</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">MFA — 4 methods</div><div class="sec-desc">Face scan · PIN · Aadhaar OTP · Officer verify</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot warn"></div><div><div class="sec-name">JWT (production upgrade)</div><div class="sec-desc">Replace tokens with PyJWT for cryptographic signing</div></div><span class="badge badge-amber">Planned</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Live Python API endpoints</div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">POST /api/auth/send-otp</div><div class="sec-desc">Generates OTP, prints to terminal, returns demo_otp</div></div></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">POST /api/auth/verify-otp</div><div class="sec-desc">Validates OTP, issues 30-min session token</div></div></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">GET /api/workers</div><div class="sec-desc">Returns workers with search + status filters</div></div></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">POST /api/workers/register</div><div class="sec-desc">Saves worker, calculates risk score, returns ID</div></div></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">POST /api/fraud/check-velocity</div><div class="sec-desc">Haversine formula — GPS impossible travel detection</div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Data protection</div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">AES-256 at rest</div><div class="sec-desc">Production: encrypt PII using Python cryptography library</div></div><span class="badge badge-teal">Designed</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">CORS enabled</div><div class="sec-desc">flask-cors lets frontend call backend safely</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">RBAC</div><div class="sec-desc">District admin scoped to their district only</div></div><span class="badge badge-teal">Designed</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">DPDP Act 2023</div><div class="sec-desc">Minimal data, purpose limitation, consent</div></div><span class="badge badge-teal">Compliant</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">AI security modules</div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">Risk score engine</div><div class="sec-desc">6 weighted signals in app.py register route</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">Geo-velocity fraud check</div><div class="sec-desc">Haversine in app.py — testable live in Fraud section</div></div><span class="badge badge-teal">Active</span></div>
+          <div class="sec-item"><div class="sec-dot warn"></div><div><div class="sec-name">Biometric deduplication</div><div class="sec-desc">DeepFace cosine similarity — production upgrade</div></div><span class="badge badge-amber">Designed</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTH DEMO -->
+    <div class="section" id="sec-auth">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:0 0 300px">
+          <div class="card">
+            <div class="card-title">Auth demo — calls real Python backend</div>
+            <div class="auth-phone">
+              <div class="step-dots" id="auth-dots">
+                <div class="sdot active"></div><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div>
+              </div>
+              <div class="auth-step visible" id="as-1">
+                <div style="font-family:var(--syne);font-size:14px;font-weight:700;color:var(--teal);margin-bottom:2px">Pravi</div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:18px">Worker Registry · Login</div>
+                <label class="form-label">Mobile number</label>
+                <input class="form-input" id="auth-phone" value="+91 98765 43210"/>
+                <button class="btn-primary" onclick="authSendOTP()">Get OTP from Python →</button>
+                <div class="hint">Calls POST /api/auth/send-otp · OTP prints in terminal</div>
+              </div>
+              <div class="auth-step" id="as-2">
+                <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">OTP sent!</div>
+                <div class="alert alert-info" style="margin-bottom:12px"><div class="alert-body">Check VS Code terminal for OTP.<br/><strong id="auth-demo-otp">OTP: —</strong></div></div>
+                <div class="otp-row" id="auth-otp-inputs">
+                  <input class="otp-box" maxlength="1"/>
+                  <input class="otp-box" maxlength="1"/>
+                  <input class="otp-box" maxlength="1"/>
+                  <input class="otp-box" maxlength="1"/>
+                  <input class="otp-box" maxlength="1"/>
+                  <input class="otp-box" maxlength="1"/>
+                </div>
+                <button class="btn-primary" onclick="authVerifyOTP()">Verify via Python →</button>
+              </div>
+              <div class="auth-step" id="as-3">
+                <div style="font-size:13px;font-weight:500;margin-bottom:4px">Choose 2nd factor</div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Calls POST /api/auth/verify-mfa</div>
+                <div class="mfa-grid">
+                  <div class="mfa-btn sel" onclick="selMFA(this)"><span class="mfa-icon">🤳</span><span class="mfa-label">Face scan</span></div>
+                  <div class="mfa-btn" onclick="selMFA(this)"><span class="mfa-icon">🔢</span><span class="mfa-label">6-digit PIN</span></div>
+                  <div class="mfa-btn" onclick="selMFA(this)"><span class="mfa-icon">🪪</span><span class="mfa-label">Aadhaar OTP</span></div>
+                  <div class="mfa-btn" onclick="selMFA(this)"><span class="mfa-icon">👮</span><span class="mfa-label">Officer verify</span></div>
+                </div>
+                <button class="btn-primary" onclick="authMFA()">Confirm via Python →</button>
+              </div>
+              <div class="auth-step" id="as-4">
+                <div style="text-align:center;padding:10px 0">
+                  <div style="font-size:42px;margin-bottom:10px">✅</div>
+                  <div style="font-family:var(--syne);font-size:15px;font-weight:700;color:var(--teal)">Authenticated!</div>
+                  <div style="font-size:11px;color:var(--text2);margin-top:4px">Backend confirmed · Session: 30 min</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:6px;line-height:1.7" id="auth-result-detail">Token issued</div>
+                  <div style="height:14px"></div>
+                  <button class="btn-sm btn-sm-teal" onclick="authGo(1)">Replay demo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:240px">
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-title">Why no email?</div>
+            <div class="alert alert-info"><div class="alert-body" style="line-height:1.7"><strong>65%+ of India's informal workers</strong> have no email. Phone OTP + face scan = two-factor security at 200M+ scale without email literacy.</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">What happens in app.py</div>
+            <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">send-otp</div><div class="sec-desc">random.randint(100000,999999) · stored in dict · 5-min TTL · prints to terminal</div></div></div>
+            <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">verify-otp</div><div class="sec-desc">checks match · tracks fail_count · del otp after use · issues token</div></div></div>
+            <div class="sec-item"><div class="sec-dot"></div><div><div class="sec-name">verify-mfa</div><div class="sec-desc">marks session mfa_done=True · returns phone + method + expiry</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+var API = 'http://localhost:5000';
+
+// ── LOGIN ─────────────────────────────────────
+var selectedRole = '';
+
+// Credentials — in production these come from backend
+var CREDENTIALS = {
+  admin:  { username: 'admin',  password: 'admin123',  name: 'Ravi Sharma',  role: 'District Admin · Surat' },
+  worker: { username: 'worker', password: 'worker123', name: 'Rajesh Kumar', role: 'Registered Worker' }
+};
+
+function selectRole(role) {
+  selectedRole = role;
+  // Reset both cards
+  document.getElementById('role-admin').style.border  = '1.5px solid rgba(0,0,0,0.08)';
+  document.getElementById('role-worker').style.border = '1.5px solid rgba(0,0,0,0.08)';
+  document.getElementById('role-admin').style.background  = 'white';
+  document.getElementById('role-worker').style.background = 'white';
+  // Highlight selected
+  document.getElementById('role-' + role).style.border     = '1.5px solid #1D9E75';
+  document.getElementById('role-' + role).style.background = '#E1F5EE';
+  // Show fields
+  document.getElementById('login-fields').style.display = 'block';
+  document.getElementById('role-prompt').style.display  = 'none';
+  // Set label and hint
+  if (role === 'admin') {
+    document.getElementById('login-label').textContent = 'Admin username';
+    document.getElementById('login-username').placeholder = 'Enter admin username';
+    document.getElementById('login-hint').textContent = 'Demo credentials: admin / admin123';
+  } else {
+    document.getElementById('login-label').textContent = 'Mobile number';
+    document.getElementById('login-username').placeholder = 'Enter your mobile number';
+    document.getElementById('login-hint').textContent = 'Demo credentials: worker / worker123';
+  }
+}
+
+function doLogin() {
+  var username = document.getElementById('login-username').value.trim();
+  var password = document.getElementById('login-password').value.trim();
+  var err      = document.getElementById('login-error');
+
+  if (!username || !password) {
+    err.textContent = 'Please enter both fields';
+    err.style.display = 'block';
+    return;
+  }
+
+  var creds = CREDENTIALS[selectedRole];
+  if (username === creds.username && password === creds.password) {
+    // Login success
+    document.getElementById('login-screen').style.display = 'none';
+    // Update sidebar footer with logged in user
+    document.querySelector('.sf-name').textContent = creds.name;
+    document.querySelector('.sf-role').textContent = creds.role;
+    // If worker logged in — go straight to register section
+    if (selectedRole === 'worker') {
+  // Show worker's own dashboard instead of admin dashboard
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('sec-worker-home').classList.add('active');
+  document.getElementById('page-title').textContent = 'My Dashboard';
+  document.getElementById('page-sub').textContent = 'Welcome back, ' + creds.name;
+  // Update worker profile card with logged in name
+  var initials = creds.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2);
+  document.getElementById('worker-avatar-big').textContent = initials;
+  document.getElementById('worker-display-name').textContent = creds.name;
+  document.getElementById('id-card-name').textContent = creds.name;
+  // Hide admin-only nav items from worker
+  document.querySelectorAll('.nav-item[onclick*="fraud"], .nav-item[onclick*="security"], .nav-item[onclick*="workers"], .nav-item[onclick*="auth"]').forEach(function(el){
+    el.style.display = 'none';
+  });
+}
+  } else {
+    err.textContent = 'Wrong username or password. Try again.';
+    err.style.display = 'block';
+  }
+}
+
+// Allow Enter key to submit login
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+    doLogin();
+  }
+});
+
+var currentToken = null;
+var regPhone = '';
+var authToken = '';
+var authStep = 1;
+var regStep = 1;
+
+var SECTORS = [
+  {label:'Factory / Textile',val:88,color:'#BA7517'},
+  {label:'Construction',val:72,color:'#1D9E75'},
+  {label:'Domestic Help',val:54,color:'#378ADD'},
+  {label:'Agriculture',val:31,color:'#D85A30'},
+  {label:'Transport',val:18,color:'#888780'},
+];
+
+window.onload = function() { renderSectorBars(); checkBackend(); };
+
+function checkBackend() {
+  var badge = document.getElementById('backend-badge');
+  fetch(API + '/api/workers/stats')
+    .then(function(r){return r.json();})
+    .then(function(data) {
+      if (data.success) {
+        badge.textContent = 'Backend Live';
+        badge.className = 'badge badge-teal';
+        animateCounter('cnt-workers', data.totalWorkers, 1800);
+        animateCounter('cnt-emp', data.verifiedEmployers, 1400);
+        animateCounter('cnt-fraud', data.fraudFlags, 800);
+        animateCounter('cnt-kyc', data.pendingKYC, 1200);
+        document.getElementById('data-source').textContent = '— from Python backend';
+        loadWorkers(); loadFraudAlerts();
+      }
+    })
+    .catch(function() {
+      badge.textContent = 'Backend Offline';
+      badge.className = 'badge badge-amber';
+      animateCounter('cnt-workers',184203,1800);
+      animateCounter('cnt-emp',8441,1400);
+      animateCounter('cnt-fraud',37,800);
+      animateCounter('cnt-kyc',1209,1200);
+      loadMockWorkers(); loadMockFraud();
+    });
+}
+
+var TITLES = {dashboard:'Dashboard',register:'Register Worker',workers:'Worker Records',fraud:'Fraud Alerts',security:'Security Controls',auth:'Auth / MFA Flow'};
+var SUBS = {dashboard:'Surat District · March 2026',register:'Register as a new worker',workers:'Fetched from Python /api/workers',fraud:'AI fraud detection · Python backend',security:'Security architecture overview',auth:'Live auth demo — calls app.py'};
+
+function nav(name, btn) {
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var sec = document.getElementById('sec-'+name);
+  if (sec) sec.classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('page-title').textContent = TITLES[name]||name;
+  document.getElementById('page-sub').textContent = SUBS[name]||'';
+  if (name==='workers') loadWorkers();
+  if (name==='fraud') loadFraudAlerts();
+}
+
+function animateCounter(id, target, duration) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var step = target/(duration/16); var current = 0;
+  var timer = setInterval(function() {
+    current = Math.min(current+step, target);
+    el.textContent = Math.floor(current).toLocaleString('en-IN');
+    if (current>=target) clearInterval(timer);
+  }, 16);
+}
+
+function renderSectorBars() {
+  var el = document.getElementById('sector-bars-container');
+  if (!el) return;
+  var html = '';
+  SECTORS.forEach(function(s) {
+    html += '<div class="bar-row"><div class="bar-label">'+s.label+'</div><div class="bar-track"><div class="bar-fill" style="background:'+s.color+'" data-w="'+s.val+'"></div></div><div class="bar-val">'+s.val+'k</div></div>';
+  });
+  el.innerHTML = html;
+  setTimeout(function() {
+    document.querySelectorAll('.bar-fill[data-w]').forEach(function(b){b.style.width=b.getAttribute('data-w')+'%';});
+  }, 400);
+}
+
+function loadWorkers() {
+  fetch(API+'/api/workers').then(function(r){return r.json();}).then(function(data) {
+    if (data.success) {
+      renderTable(data.workers);
+      document.getElementById('worker-source').textContent = 'from Python backend ('+data.count+' records)';
+      renderRecentWorkers(data.workers.slice(0,5));
+    }
+  }).catch(function(){loadMockWorkers();});
+}
+
+function loadMockWorkers() {
+  var mock = [
+    {id:'SRT-10001',name:'Rajesh Kumar',sector:'Construction',district:'Vesu',origin:'Bihar',status:'Verified',risk:0.04},
+    {id:'SRT-10043',name:'Aman Singh',sector:'Factory',district:'Pandesara',origin:'UP',status:'Pending',risk:0.41},
+    {id:'SRT-29814',name:'Raj Kumar',sector:'Factory',district:'Katargam',origin:'Bihar',status:'Flagged',risk:0.87},
+    {id:'SRT-11204',name:'Priya Mehta',sector:'Domestic',district:'Adajan',origin:'Rajasthan',status:'Pending',risk:0.12},
+    {id:'SRT-14508',name:'Mohammed Hussain',sector:'Factory',district:'Pandesara',origin:'West Bengal',status:'Verified',risk:0.07},
+  ];
+  renderTable(mock); renderRecentWorkers(mock);
+  document.getElementById('worker-source').textContent = 'mock data (backend offline)';
+}
+
+function renderRecentWorkers(workers) {
+  var el = document.getElementById('recent-workers-list');
+  if (!el) return;
+  var avC = ['av-t','av-a','av-b','av-c'];
+  el.innerHTML = workers.map(function(w,i) {
+    var bc = w.status==='Verified'?'badge-teal':w.status==='Pending'?'badge-amber':'badge-coral';
+    var av = w.name.split(' ').map(function(n){return n[0];}).join('').substring(0,2);
+    return '<div class="worker-row"><div class="avatar '+avC[i%4]+'">'+av+'</div><div style="flex:1"><div class="wname">'+w.name+'</div><div class="wmeta">'+w.sector+' · '+w.district+'</div></div><span class="badge '+bc+'">'+w.status+'</span></div>';
+  }).join('');
+}
+
+function renderTable(workers) {
+  var tbody = document.getElementById('workers-tbody');
+  if (!tbody) return;
+  if (!workers.length) {tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No workers found</td></tr>';return;}
+  tbody.innerHTML = workers.map(function(w) {
+    var rc = w.risk>0.6?'risk-h':w.risk>0.3?'risk-m':'risk-l';
+    var bc = w.status==='Verified'?'badge-teal':w.status==='Pending'?'badge-amber':'badge-coral';
+    return '<tr><td style="font-weight:500;color:var(--teal)">'+w.id+'</td><td>'+w.name+'</td><td>'+w.sector+'</td><td>'+(w.district||'—')+'</td><td>'+(w.origin||'—')+'</td><td><span class="badge '+bc+'">'+w.status+'</span></td><td class="'+rc+'">'+(w.risk||0).toFixed(2)+'</td></tr>';
+  }).join('');
+}
+
+function searchWorkers(q) {
+  fetch(API+'/api/workers?search='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(d){if(d.success)renderTable(d.workers);}).catch(function(){});
+}
+function filterByStatus(s) {
+  fetch(API+'/api/workers?status='+encodeURIComponent(s)).then(function(r){return r.json();}).then(function(d){if(d.success)renderTable(d.workers);}).catch(function(){});
+}
+
+function loadFraudAlerts() {
+  fetch(API+'/api/fraud/alerts').then(function(r){return r.json();}).then(function(data) {
+    if (data.success) {renderFraudAlerts(data.alerts);renderFraudDash(data.alerts);}
+  }).catch(function(){loadMockFraud();});
+}
+
+function loadMockFraud() {
+  var mock = [
+    {severity:'critical',title:'Biometric duplicate',detail:'SRT-29814 and SRT-10043 share 87% face similarity.'},
+    {severity:'critical',title:'GPS anomaly — SRT-44019',detail:'Surat to Ahmedabad in 3 hrs. Impossible travel.'},
+    {severity:'medium',title:'Employer license mismatch',detail:'Shree Textiles license expiry mismatch.'},
+  ];
+  renderFraudAlerts(mock); renderFraudDash(mock);
+}
+
+function renderFraudAlerts(alerts) {
+  var el = document.getElementById('fraud-alerts-panel');
+  if (!el) return;
+  el.innerHTML = '<div class="card-title">Active fraud flags — Python backend ('+alerts.length+')</div>'+
+    alerts.map(function(a) {
+      var cls = a.severity==='critical'?'alert-danger':'alert-warn';
+      var icon = a.severity==='critical'?'🔴':'🟡';
+      return '<div class="alert '+cls+'"><div class="alert-title">'+icon+' '+a.title+'</div><div class="alert-body">'+a.detail+'</div></div>';
+    }).join('');
+}
+
+function renderFraudDash(alerts) {
+  var el = document.getElementById('fraud-alerts-dash');
+  if (!el) return;
+  el.innerHTML = alerts.slice(0,3).map(function(a) {
+    var cls = a.severity==='critical'?'alert-danger':a.severity==='medium'?'alert-warn':'alert-info';
+    return '<div class="alert '+cls+'"><div class="alert-title">'+a.title+'</div><div class="alert-body">'+a.detail+'</div></div>';
+  }).join('');
+}
+
+function testVelocityAPI() {
+  var res = document.getElementById('velocity-result');
+  res.style.display='block'; res.textContent='Calling Python backend...';
+  fetch(API+'/api/fraud/check-velocity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat1:21.1702,lon1:72.8311,lat2:23.0225,lon2:72.5714,hoursGap:3})})
+  .then(function(r){return r.json();})
+  .then(function(data) {
+    res.innerHTML = data.isFraud
+      ? '<div class="alert alert-danger"><div class="alert-title">🚨 FRAUD DETECTED</div><div class="alert-body">'+data.distanceKm+' km in 3 hrs = '+data.speedKmh+' km/h · '+data.reason+'</div></div>'
+      : '<div class="alert alert-success"><div class="alert-body">✅ '+data.reason+'</div></div>';
+  }).catch(function(){res.innerHTML='<div class="alert alert-warn"><div class="alert-body">Backend offline — run: python app.py</div></div>';});
+}
+
+function regGo(n) {
+  var prev = document.getElementById('sp-'+regStep);
+  var next = document.getElementById('sp-'+n);
+  if (prev) prev.classList.remove('visible');
+  if (next) next.classList.add('visible');
+  for (var i=1;i<=6;i++) {
+    var el=document.getElementById('si-'+i); if (!el) continue;
+    el.classList.remove('done','active');
+    if (i<n) el.classList.add('done'); else if(i===n) el.classList.add('active');
+  }
+  regStep=n;
+}
+
+function sendOTPFromBackend() {
+  var phone = document.getElementById('reg-phone').value.trim();
+  var lang = document.querySelector('#lang-pills .pill.sel');
+  var language = lang?lang.textContent:'Hindi';
+  var btn = document.getElementById('send-otp-btn');
+  var err = document.getElementById('otp-error');
+  if (!phone){err.textContent='Enter a phone number';err.style.display='block';return;}
+  err.style.display='none'; btn.disabled=true; btn.textContent='Sending...';
+  regPhone=phone;
+  fetch(API+'/api/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone,language:language})})
+  .then(function(r){return r.json();})
+  .then(function(data) {
+    btn.disabled=false; btn.textContent='Send OTP via Python backend →';
+    if (data.success){if(data.demo_otp)document.getElementById('demo-otp-display').textContent=data.demo_otp;regGo(2);}
+    else{err.textContent=data.error||'Error sending OTP';err.style.display='block';}
+  }).catch(function(){btn.disabled=false;btn.textContent='Send OTP via Python backend →';err.textContent='Backend offline. Start: python app.py';err.style.display='block';});
+}
+
+function verifyOTPFromBackend() {
+  var boxes = document.querySelectorAll('#otp-inputs .otp-box');
+  var otp = Array.from(boxes).map(function(b){return b.value;}).join('');
+  var btn = document.getElementById('verify-otp-btn');
+  var err = document.getElementById('otp-verify-error');
+  if (otp.length<6){err.textContent='Enter all 6 digits';err.style.display='block';return;}
+  err.style.display='none'; btn.disabled=true; btn.textContent='Verifying...';
+  fetch(API+'/api/auth/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:regPhone,otp:otp})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.disabled=false; btn.textContent='Verify OTP →';
+    if(data.success){currentToken=data.token;regGo(3);}
+    else{err.textContent=data.error||'Wrong OTP';err.style.display='block';}
+  }).catch(function(){btn.disabled=false;btn.textContent='Verify OTP →';err.textContent='Backend offline.';err.style.display='block';});
+}
+
+function submitRegistration() {
+  var name=document.getElementById('reg-name').value||'Demo Worker';
+  var sector=document.getElementById('reg-sector').value;
+  var origin=document.getElementById('reg-origin').value;
+  fetch(API+'/api/workers/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:regPhone||'9999999999',name:name,sector:sector,stateOfOrigin:origin})})
+  .then(function(r){return r.json();})
+  .then(function(data){if(data.success){var el=document.getElementById('new-worker-id');if(el)el.textContent=data.workerId;}regGo(6);})
+  .catch(function(){regGo(6);});
+}
+
+function otpType(el,pos){if(el.value.length===1){el.classList.add('otp-filled');var next=el.parentElement.children[pos];if(next)next.focus();}}
+function simulateUpload(){document.getElementById('upload-zone').classList.add('done');document.getElementById('upload-label').textContent='aadhaar_front.jpg — uploaded ✓';}
+function captureFace(){document.getElementById('face-zone').classList.add('captured');document.getElementById('face-oval').textContent='😊';document.getElementById('face-text').textContent='Face captured — embedding generated ✓';}
+
+function authGo(n) {
+  var prev=document.getElementById('as-'+authStep); var next=document.getElementById('as-'+n);
+  if(prev)prev.classList.remove('visible'); if(next)next.classList.add('visible');
+  document.querySelectorAll('#auth-dots .sdot').forEach(function(d,i){d.classList.remove('done','active');if(i<n-1)d.classList.add('done');else if(i===n-1)d.classList.add('active');});
+  authStep=n;
+}
+
+function authSendOTP() {
+  var phone=document.getElementById('auth-phone').value;
+  fetch(API+'/api/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone,language:'Hindi'})})
+  .then(function(r){return r.json();}).then(function(data){if(data.success){var el=document.getElementById('auth-demo-otp');if(el&&data.demo_otp)el.textContent='OTP: '+data.demo_otp;authGo(2);}})
+  .catch(function(){alert('Backend offline. Run: python app.py');});
+}
+
+function authVerifyOTP() {
+  var boxes=document.querySelectorAll('#auth-otp-inputs .otp-box');
+  var otp=Array.from(boxes).map(function(b){return b.value;}).join('');
+  var phone=document.getElementById('auth-phone').value;
+  fetch(API+'/api/auth/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone,otp:otp})})
+  .then(function(r){return r.json();}). then(function(data){if(data.success){authToken=data.token;authGo(3);}else alert('Wrong OTP: '+data.error);})
+  .catch(function(){authGo(3);});
+}
+
+function authMFA() {
+  var method=document.querySelector('.mfa-btn.sel .mfa-label');
+  var m=method?method.textContent:'face';
+  fetch(API+'/api/auth/verify-mfa',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:authToken,method:m})})
+  .then(function(r){return r.json();})
+  .then(function(data){var el=document.getElementById('auth-result-detail');if(data.success&&el)el.innerHTML='Phone: '+data.session.phone+'<br>Method: '+data.session.method+'<br>Expires: '+data.session.expiresIn;authGo(4);})
+  .catch(function(){authGo(4);});
+}
+
+function selMFA(el){document.querySelectorAll('.mfa-btn').forEach(function(b){b.classList.remove('sel');});el.classList.add('sel');}
+
+// ── AI ASSISTANT ──────────────────────────────
+function sendAIQuestion() {
+  var input   = document.getElementById('ai-question-input');
+  var chatbox = document.getElementById('ai-chat-box');
+  var btn     = document.getElementById('ai-send-btn');
+  var question = input.value.trim();
+  if (!question) return;
+
+  // Worker context — in production this comes from their profile
+  var context = 'Worker name: ' + document.getElementById('worker-display-name').textContent +
+                ', Sector: Construction, District: Surat, Status: Verified, Origin: Bihar';
+
+  // Show question in chat
+  chatbox.innerHTML = '<div style="background:var(--teal-lt);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--teal)"><strong>You:</strong> ' + question + '</div>' +
+                      '<div style="font-size:12px;color:var(--text3);padding:4px 0">⏳ Pravi AI is thinking...</div>';
+  input.value = '';
+  btn.disabled = true;
+  btn.textContent = 'Asking...';
+
+  // Call Python backend which calls Claude
+  fetch(API + '/api/ai/ask', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({ question: question, context: context })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = 'Ask AI →';
+    chatbox.innerHTML =
+      '<div style="background:var(--teal-lt);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--teal)"><strong>You:</strong> ' + question + '</div>' +
+      '<div style="background:white;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);line-height:1.7"><strong style="color:var(--teal)">Pravi AI:</strong> ' + data.answer + '</div>';
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Ask AI →';
+    chatbox.innerHTML = '<div style="color:var(--coral);font-size:12px">AI assistant unavailable. Make sure backend is running.</div>';
+  });
+}
+
+function askSuggested(el) {
+  document.getElementById('ai-question-input').value = el.textContent;
+  sendAIQuestion();
+}
+
+</script>
+</body>
+</html>
